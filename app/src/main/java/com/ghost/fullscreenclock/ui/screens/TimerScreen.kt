@@ -1,6 +1,7 @@
 package com.ghost.fullscreenclock.ui.screens
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -26,7 +27,6 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -37,7 +37,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.PlatformTextStyle
@@ -54,6 +59,7 @@ import com.ghost.fullscreenclock.theme.PureWhite
 import com.ghost.fullscreenclock.ui.viewmodel.TimersViewModel
 
 private val StartGreen = Color(0xFF34C759)
+private val WarningAmber = Color(0xFFFFCC00)
 private val StopRed = Color(0xFFFF3B30)
 private val MutedText = Color(0xFF8E8E93)
 
@@ -72,6 +78,30 @@ private fun formatDuration(totalSeconds: Long): String {
     val m = (totalSeconds % 3600) / 60
     val s = totalSeconds % 60
     return if (h > 0) String.format("%d:%02d:%02d", h, m, s) else String.format("%02d:%02d", m, s)
+}
+
+/**
+ * Smoothly interpolates the progress ring color from Green -> Amber/Yellow -> Orange -> Red
+ * as the timer bar depletes toward zero.
+ */
+private fun computeTimerRingColor(
+    progress: Float,
+    canAdjust: Boolean,
+    isFinished: Boolean
+): Color {
+    if (isFinished) return StopRed
+    if (canAdjust) return PureWhite
+    return when {
+        progress >= 0.5f -> {
+            val t = ((1f - progress) / 0.5f).coerceIn(0f, 1f)
+            lerp(StartGreen, WarningAmber, t)
+        }
+        progress >= 0.15f -> {
+            val t = ((0.5f - progress) / 0.35f).coerceIn(0f, 1f)
+            lerp(WarningAmber, StopRed, t)
+        }
+        else -> StopRed
+    }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -99,11 +129,11 @@ fun TimerScreen(
         canAdjust -> "Set duration"
         else -> "Paused"
     }
-    val ringColor = when {
-        isFinished -> StopRed
-        isRunning -> StartGreen
-        else -> PureWhite
-    }
+    val ringColor = computeTimerRingColor(
+        progress = progress,
+        canAdjust = canAdjust,
+        isFinished = isFinished
+    )
 
     BoxWithConstraints(
         modifier = modifier
@@ -136,6 +166,7 @@ fun TimerScreen(
                 dialSize = dialSize,
                 progress = progress,
                 ringColor = ringColor,
+                isFinished = isFinished,
                 time = timeFormatted,
                 status = statusText,
                 fontSize = timerFontSize
@@ -261,34 +292,60 @@ fun TimerScreen(
     }
 }
 
+/**
+ * Circular timer dial that depletes CLOCKWISE starting from 12 o'clock down the right side
+ * (12 -> 3 -> 6 -> 9 -> 12 o'clock) and smoothly transitions its color toward Red.
+ */
 @Composable
 private fun TimerDial(
     dialSize: Dp,
     progress: Float,
     ringColor: Color,
+    isFinished: Boolean,
     time: String,
     status: String,
     fontSize: androidx.compose.ui.unit.TextUnit
 ) {
     Box(modifier = Modifier.size(dialSize), contentAlignment = Alignment.Center) {
-        CircularProgressIndicator(
-            progress = { 1f },
-            modifier = Modifier.fillMaxSize(),
-            color = CharcoalCard,
-            strokeWidth = 8.dp,
-            trackColor = CharcoalCard
-        )
-        CircularProgressIndicator(
-            progress = { progress },
-            modifier = Modifier.fillMaxSize(),
-            color = ringColor,
-            strokeWidth = 8.dp,
-            trackColor = Color.Transparent
-        )
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val strokePx = 8.dp.toPx()
+            val inset = strokePx / 2f
+            val arcSize = Size(size.width - strokePx, size.height - strokePx)
+            val topLeft = Offset(inset, inset)
+
+            // Full track ring ( turns red when finished )
+            drawArc(
+                color = if (isFinished) StopRed.copy(alpha = 0.45f) else CharcoalCard,
+                startAngle = -90f,
+                sweepAngle = 360f,
+                useCenter = false,
+                topLeft = topLeft,
+                size = arcSize,
+                style = Stroke(width = strokePx, cap = StrokeCap.Round)
+            )
+
+            // Remaining progress arc: starts at -90° + (1 - progress) * 360° and sweeps clockwise
+            // to 270° (12 o'clock), so the depleting edge moves clockwise from the right side first.
+            val clamped = progress.coerceIn(0f, 1f)
+            if (clamped > 0.001f) {
+                val startAngle = -90f + (1f - clamped) * 360f
+                val sweepAngle = clamped * 360f
+                drawArc(
+                    color = ringColor,
+                    startAngle = startAngle,
+                    sweepAngle = sweepAngle,
+                    useCenter = false,
+                    topLeft = topLeft,
+                    size = arcSize,
+                    style = Stroke(width = strokePx, cap = StrokeCap.Round)
+                )
+            }
+        }
+
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = time,
-                color = PureWhite,
+                color = if (isFinished) StopRed else PureWhite,
                 fontSize = fontSize,
                 fontWeight = FontWeight.Bold,
                 fontFamily = FontFamily.Monospace,
@@ -300,7 +357,7 @@ private fun TimerDial(
             Spacer(Modifier.height(6.dp))
             Text(
                 text = status.uppercase(),
-                color = MutedText,
+                color = if (isFinished) StopRed else MutedText,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
                 letterSpacing = 1.5.sp

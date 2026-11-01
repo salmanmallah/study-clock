@@ -159,6 +159,7 @@ class TimersViewModel(application: Application) : AndroidViewModel(application) 
     /** Sets the preset duration directly (e.g. from quick preset chips). */
     fun setTimerDurationSeconds(seconds: Int) {
         if (!_canAdjustTimer.value) return
+        TimerAlertReceiver.stopBeepPattern()
         val updated = seconds.coerceIn(5, 99 * 3600 + 59 * 60 + 59)
         _timerSetSeconds.value = updated
         _timerRemainingMillis.value = updated * 1000L
@@ -175,6 +176,7 @@ class TimersViewModel(application: Application) : AndroidViewModel(application) 
 
     fun startTimer() {
         if (_timerRunning.value) return
+        TimerAlertReceiver.stopBeepPattern()
         if (_timerRemainingMillis.value <= 0L) {
             _timerRemainingMillis.value = _timerSetSeconds.value * 1000L
         }
@@ -202,7 +204,7 @@ class TimersViewModel(application: Application) : AndroidViewModel(application) 
                 } else {
                     _timerRemainingMillis.value = rem
                 }
-                delay(50L)
+                delay(16L)
             }
         }
     }
@@ -223,6 +225,7 @@ class TimersViewModel(application: Application) : AndroidViewModel(application) 
         timerJob?.cancel()
         timerJob = null
         _timerRunning.value = false
+        TimerAlertReceiver.stopBeepPattern()
         cancelAlarm(TimerAlertReceiver.TYPE_TIMER)
         clearTimerPersistence()
         _timerRemainingMillis.value = _timerSetSeconds.value * 1000L
@@ -400,6 +403,7 @@ class TimersViewModel(application: Application) : AndroidViewModel(application) 
         notificationManager.notify(notificationId, notification)
 
         triggerVibration()
+        TimerAlertReceiver.playBeepPattern()
     }
 
     private fun triggerVibration() {
