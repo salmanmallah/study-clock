@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -34,6 +35,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -291,11 +293,13 @@ private fun StopwatchControlsAndLaps(
     onLap: () -> Unit,
     onReset: () -> Unit
 ) {
-    val fastestLapNumber = remember(laps) {
-        if (laps.size >= 2) laps.minByOrNull { it.splitMillis }?.lapNumber else null
-    }
-    val slowestLapNumber = remember(laps) {
-        if (laps.size >= 2) laps.maxByOrNull { it.splitMillis }?.lapNumber else null
+    val listState = rememberLazyListState()
+
+    // Automatically scroll to top (index 0, newest lap) whenever a new lap is added
+    LaunchedEffect(laps.size) {
+        if (laps.isNotEmpty()) {
+            listState.animateScrollToItem(0)
+        }
     }
 
     Column(
@@ -393,99 +397,100 @@ private fun StopwatchControlsAndLaps(
             }
         }
 
-        // Direct borderless Laps Table on the black screen (only shown when laps exist)
-        if (laps.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(22.dp))
+        Spacer(modifier = Modifier.height(22.dp))
 
-            // Table Column Headers
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "LAP",
-                    color = DarkGrayText,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    letterSpacing = 1.2.sp,
-                    modifier = Modifier.weight(1f)
+        // Fixed-height Laps area so START/STOP and LAP buttons never jump vertically when laps are added
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(if (isLandscape) 215.dp else 250.dp)
+        ) {
+            if (laps.isNotEmpty()) {
+                // Table Column Headers
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "LAP",
+                        color = DarkGrayText,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        letterSpacing = 1.2.sp,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        text = "SPLIT",
+                        color = DarkGrayText,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        letterSpacing = 1.2.sp,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.weight(1.2f)
+                    )
+                    Text(
+                        text = "TOTAL",
+                        color = DarkGrayText,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        letterSpacing = 1.2.sp,
+                        textAlign = TextAlign.End,
+                        modifier = Modifier.weight(1.2f)
+                    )
+                }
+
+                HorizontalDivider(
+                    color = CharcoalCard,
+                    thickness = 1.dp,
+                    modifier = Modifier.padding(top = 4.dp)
                 )
-                Text(
-                    text = "SPLIT",
-                    color = DarkGrayText,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    letterSpacing = 1.2.sp,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.weight(1.2f)
-                )
-                Text(
-                    text = "TOTAL",
-                    color = DarkGrayText,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    letterSpacing = 1.2.sp,
-                    textAlign = TextAlign.End,
-                    modifier = Modifier.weight(1.2f)
-                )
-            }
 
-            HorizontalDivider(
-                color = CharcoalCard,
-                thickness = 1.dp,
-                modifier = Modifier.padding(top = 4.dp)
-            )
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                ) {
+                    items(laps) { lap ->
+                        val splitStr = formatStopwatchTime(lap.splitMillis, prefixPlus = true)
+                        val totalStr = formatStopwatchTime(lap.totalMillis, prefixPlus = false)
 
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = if (isLandscape) 185.dp else 230.dp)
-            ) {
-                items(laps, key = { it.lapNumber }) { lap ->
-                    val splitStr = formatStopwatchTime(lap.splitMillis, prefixPlus = true)
-                    val totalStr = formatStopwatchTime(lap.totalMillis, prefixPlus = false)
-
-                    val lapAccentColor = when (lap.lapNumber) {
-                        fastestLapNumber -> StartGreen
-                        slowestLapNumber -> StopRed
-                        else -> LightGrayText
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 8.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = String.format("#%02d", lap.lapNumber),
+                                color = LightGrayText,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Text(
+                                text = splitStr,
+                                color = LightGrayText,
+                                fontSize = 14.sp,
+                                fontFamily = FontFamily.Monospace,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.weight(1.2f)
+                            )
+                            Text(
+                                text = totalStr,
+                                color = PureWhite,
+                                fontSize = 15.sp,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.SemiBold,
+                                textAlign = TextAlign.End,
+                                modifier = Modifier.weight(1.2f)
+                            )
+                        }
+                        HorizontalDivider(color = SubtleDivider, thickness = 1.dp)
                     }
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 8.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = String.format("#%02d", lap.lapNumber),
-                            color = lapAccentColor,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = FontFamily.Monospace,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Text(
-                            text = splitStr,
-                            color = lapAccentColor,
-                            fontSize = 14.sp,
-                            fontFamily = FontFamily.Monospace,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.weight(1.2f)
-                        )
-                        Text(
-                            text = totalStr,
-                            color = PureWhite,
-                            fontSize = 15.sp,
-                            fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.SemiBold,
-                            textAlign = TextAlign.End,
-                            modifier = Modifier.weight(1.2f)
-                        )
-                    }
-                    HorizontalDivider(color = SubtleDivider, thickness = 1.dp)
                 }
             }
         }
