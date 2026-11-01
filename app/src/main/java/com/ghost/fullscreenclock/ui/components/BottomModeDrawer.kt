@@ -1,5 +1,6 @@
 package com.ghost.fullscreenclock.ui.components
 
+import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
@@ -37,10 +38,27 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ghost.fullscreenclock.R
 import com.ghost.fullscreenclock.model.ClockMode
 import com.ghost.fullscreenclock.theme.CharcoalCard
 import com.ghost.fullscreenclock.theme.PureBlack
 import com.ghost.fullscreenclock.theme.PureWhite
+
+private val DigitalClockModes = setOf(
+    ClockMode.DIGITAL_12,
+    ClockMode.DIGITAL_24,
+    ClockMode.SECONDS_12,
+    ClockMode.SECONDS_24
+)
+
+private val DrawerModes = listOf(
+    ClockMode.DIGITAL_24,
+    ClockMode.FLIP_CLOCK,
+    ClockMode.POMODORO,
+    ClockMode.STOPWATCH,
+    ClockMode.TIMER,
+    ClockMode.SETTINGS
+)
 
 @Composable
 fun BottomModeDrawer(
@@ -87,19 +105,35 @@ fun BottomModeDrawer(
                     onClick = { onInteraction() }
                 )
                 .navigationBarsPadding()
-                .padding(vertical = 12.dp, horizontal = 16.dp)
+                .padding(vertical = 12.dp, horizontal = 16.dp),
+            contentAlignment = Alignment.Center
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .horizontalScroll(scrollState),
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                ClockMode.entries.forEach { mode ->
-                    val isSelected = mode == currentMode
+                DrawerModes.forEach { mode ->
+                    val isDigitalEntry = mode == ClockMode.DIGITAL_24
+                    val isSelected = if (isDigitalEntry) {
+                        currentMode in DigitalClockModes
+                    } else {
+                        mode == currentMode
+                    }
+                    val displayTitle = if (isDigitalEntry) "Digital Clock" else mode.title
+                    val displayIcon = if (isDigitalEntry && currentMode in DigitalClockModes) {
+                        currentMode.iconRes
+                    } else if (isDigitalEntry) {
+                        R.drawable.clockpage24
+                    } else {
+                        mode.iconRes
+                    }
+
                     ModeTabItem(
-                        mode = mode,
+                        title = displayTitle,
+                        iconRes = displayIcon,
                         isSelected = isSelected,
                         onClick = {
                             onInteraction()
@@ -114,7 +148,8 @@ fun BottomModeDrawer(
 
 @Composable
 private fun ModeTabItem(
-    mode: ClockMode,
+    title: String,
+    @DrawableRes iconRes: Int,
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
@@ -128,11 +163,11 @@ private fun ModeTabItem(
             .background(backgroundColor)
             .border(1.5.dp, borderColor, RoundedCornerShape(12.dp))
             .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 8.dp)
+            .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
         Image(
-            painter = painterResource(id = mode.iconRes),
-            contentDescription = mode.title,
+            painter = painterResource(id = iconRes),
+            contentDescription = title,
             modifier = Modifier
                 .size(48.dp)
                 .clip(RoundedCornerShape(8.dp))
@@ -141,7 +176,7 @@ private fun ModeTabItem(
         Spacer(modifier = Modifier.height(5.dp))
 
         Text(
-            text = mode.title,
+            text = title,
             color = if (isSelected) PureWhite else PureWhite.copy(alpha = 0.7f),
             fontSize = 11.sp,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,

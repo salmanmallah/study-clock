@@ -294,33 +294,12 @@ fun ClockApp(
                             currentMode = ClockMode.SETTINGS
                             showControls = false
                         }
-                        ClockMode.DIGITAL_12 -> {
-                            is24Hour = false
-                            showSeconds = false
-                            prefs.is24HourFormat = false
-                            prefs.showSeconds = false
-                            updateDigitalMode(false, false)
-                        }
-                        ClockMode.DIGITAL_24 -> {
-                            is24Hour = true
-                            showSeconds = false
-                            prefs.is24HourFormat = true
-                            prefs.showSeconds = false
-                            updateDigitalMode(true, false)
-                        }
-                        ClockMode.SECONDS_12 -> {
-                            is24Hour = false
-                            showSeconds = true
-                            prefs.is24HourFormat = false
-                            prefs.showSeconds = true
-                            updateDigitalMode(false, true)
-                        }
+                        ClockMode.DIGITAL_12,
+                        ClockMode.DIGITAL_24,
+                        ClockMode.SECONDS_12,
                         ClockMode.SECONDS_24 -> {
-                            is24Hour = true
-                            showSeconds = true
-                            prefs.is24HourFormat = true
-                            prefs.showSeconds = true
-                            updateDigitalMode(true, true)
+                            updateDigitalMode(is24Hour, showSeconds)
+                            showControls = false
                         }
                         else -> {
                             // Non-digital modes (FLIP_CLOCK, POMODORO, STOPWATCH, TIMER)
