@@ -182,41 +182,31 @@ fun StudyClockTopControlBar(
 }
 
 /**
- * Top Control Bar for Flip Clock containing the 12-Hour / 24-Hour segmented toggle.
+ * Top Control Bar for Flip Clock containing 12-Hour / 24-Hour and Sec Off / Sec On toggles.
  */
 @Composable
 fun FlipClockTopControlBar(
     is24Hour: Boolean,
+    showSeconds: Boolean,
     onTimeFormatChanged: (Boolean) -> Unit,
+    onShowSecondsChanged: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
     onInteraction: () -> Unit = {}
 ) {
-    val barInteractionSource = remember { MutableInteractionSource() }
-
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(24.dp))
-            .background(Color(0xFF1B1B1F).copy(alpha = 0.94f))
-            .border(
-                width = 1.dp,
-                color = Color(0xFF383842),
-                shape = RoundedCornerShape(24.dp)
-            )
-            .clickable(
-                indication = null,
-                interactionSource = barInteractionSource,
-                onClick = onInteraction
-            )
-            .padding(horizontal = 6.dp, vertical = 4.dp)
-    ) {
-        FormatToggleSegment(
-            is24Hour = is24Hour,
-            onFormatSelected = { new24 ->
-                onTimeFormatChanged(new24)
-                onInteraction()
-            }
-        )
-    }
+    StudyClockTopControlBar(
+        is24Hour = is24Hour,
+        showSeconds = showSeconds,
+        onTimeFormatChanged = { new24 ->
+            onTimeFormatChanged(new24)
+            onInteraction()
+        },
+        onShowSecondsChanged = { newSec ->
+            onShowSecondsChanged(newSec)
+            onInteraction()
+        },
+        modifier = modifier,
+        onInteraction = onInteraction
+    )
 }
 
 /**

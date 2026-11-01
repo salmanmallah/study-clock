@@ -34,9 +34,11 @@ import com.ghost.fullscreenclock.ui.components.FlipCard
 fun FlipClockScreen(
     clockTime: ClockTime,
     is24Hour: Boolean,
+    showSeconds: Boolean,
     controlsVisible: Boolean,
     onScreenTap: () -> Unit,
     onTimeFormatChanged: (Boolean) -> Unit,
+    onShowSecondsChanged: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
     onInteraction: () -> Unit = {}
 ) {
@@ -51,6 +53,7 @@ fun FlipClockScreen(
         h.toString()
     }
     val minuteText = clockTime.formattedMinute
+    val secondText = clockTime.formattedSecond
     val amPmText = if (!is24Hour) clockTime.amPmString else null
 
     BoxWithConstraints(
@@ -67,45 +70,90 @@ fun FlipClockScreen(
         val isLandscape = maxWidth > maxHeight
 
         if (isLandscape) {
-            // Authentic original dimensions:
-            // Cards take ~81% of screen height, aspect ratio width/height is ~0.89
-            val cardHeight = (maxHeight * 0.81f).coerceIn(200.dp, 800.dp)
-            val cardWidth = cardHeight * 0.89f
-            val cardSpacing = cardWidth * 0.15f
-            val seamHeight = (cardHeight * 0.011f).coerceIn(3.dp, 4.dp)
-            val cornerRadius = (cardHeight * 0.044f).coerceIn(12.dp, 22.dp)
+            if (!showSeconds) {
+                // 2-Card Layout (HH : MM)
+                val cardHeight = (maxHeight * 0.81f).coerceIn(200.dp, 800.dp)
+                val cardWidth = cardHeight * 0.89f
+                val cardSpacing = cardWidth * 0.15f
+                val seamHeight = (cardHeight * 0.011f).coerceIn(3.dp, 4.dp)
+                val cornerRadius = (cardHeight * 0.044f).coerceIn(12.dp, 22.dp)
 
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
-            ) {
-                // Hour Split-Flap Card (includes AM/PM in bottom-left in 12h mode)
-                FlipCard(
-                    value = hourText,
-                    cardWidth = cardWidth,
-                    cardHeight = cardHeight,
-                    bottomCornerLabel = amPmText,
-                    seamHeight = seamHeight,
-                    cornerRadius = cornerRadius
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    FlipCard(
+                        value = hourText,
+                        cardWidth = cardWidth,
+                        cardHeight = cardHeight,
+                        bottomCornerLabel = amPmText,
+                        seamHeight = seamHeight,
+                        cornerRadius = cornerRadius
+                    )
 
-                Spacer(modifier = Modifier.width(cardSpacing))
+                    Spacer(modifier = Modifier.width(cardSpacing))
 
-                // Minute Split-Flap Card
-                FlipCard(
-                    value = minuteText,
-                    cardWidth = cardWidth,
-                    cardHeight = cardHeight,
-                    bottomCornerLabel = null,
-                    seamHeight = seamHeight,
-                    cornerRadius = cornerRadius
-                )
+                    FlipCard(
+                        value = minuteText,
+                        cardWidth = cardWidth,
+                        cardHeight = cardHeight,
+                        bottomCornerLabel = null,
+                        seamHeight = seamHeight,
+                        cornerRadius = cornerRadius
+                    )
+                }
+            } else {
+                // 3-Card Layout (HH : MM : SS)
+                val maxCardWidth = (maxWidth * 0.85f) / 3.16f
+                val cardHeight = (maxCardWidth / 0.89f).coerceAtMost(maxHeight * 0.78f).coerceIn(160.dp, 650.dp)
+                val cardWidth = cardHeight * 0.89f
+                val cardSpacing = cardWidth * 0.08f
+                val seamHeight = (cardHeight * 0.011f).coerceIn(3.dp, 4.dp)
+                val cornerRadius = (cardHeight * 0.044f).coerceIn(12.dp, 20.dp)
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    FlipCard(
+                        value = hourText,
+                        cardWidth = cardWidth,
+                        cardHeight = cardHeight,
+                        bottomCornerLabel = amPmText,
+                        seamHeight = seamHeight,
+                        cornerRadius = cornerRadius
+                    )
+
+                    Spacer(modifier = Modifier.width(cardSpacing))
+
+                    FlipCard(
+                        value = minuteText,
+                        cardWidth = cardWidth,
+                        cardHeight = cardHeight,
+                        bottomCornerLabel = null,
+                        seamHeight = seamHeight,
+                        cornerRadius = cornerRadius
+                    )
+
+                    Spacer(modifier = Modifier.width(cardSpacing))
+
+                    FlipCard(
+                        value = secondText,
+                        cardWidth = cardWidth,
+                        cardHeight = cardHeight,
+                        bottomCornerLabel = null,
+                        seamHeight = seamHeight,
+                        cornerRadius = cornerRadius
+                    )
+                }
             }
         } else {
             // Portrait fallback: stacked vertically
-            val cardWidth = (maxWidth * 0.86f).coerceIn(160.dp, 450.dp)
+            val cardCount = if (showSeconds) 3 else 2
+            val maxCardHeight = (maxHeight * 0.82f) / (cardCount + (cardCount - 1) * 0.08f)
+            val cardWidth = (maxWidth * 0.82f).coerceAtMost(maxCardHeight * 0.89f).coerceIn(140.dp, 420.dp)
             val cardHeight = cardWidth / 0.89f
-            val cardSpacing = cardHeight * 0.08f
+            val cardSpacing = cardHeight * 0.07f
             val seamHeight = (cardHeight * 0.011f).coerceIn(3.dp, 4.dp)
             val cornerRadius = (cardHeight * 0.044f).coerceIn(12.dp, 22.dp)
 
@@ -132,10 +180,23 @@ fun FlipClockScreen(
                     seamHeight = seamHeight,
                     cornerRadius = cornerRadius
                 )
+
+                if (showSeconds) {
+                    Spacer(modifier = Modifier.height(cardSpacing))
+
+                    FlipCard(
+                        value = secondText,
+                        cardWidth = cardWidth,
+                        cardHeight = cardHeight,
+                        bottomCornerLabel = null,
+                        seamHeight = seamHeight,
+                        cornerRadius = cornerRadius
+                    )
+                }
             }
         }
 
-        // Top 12-Hour / 24-Hour Format Toggle Bar with 3-second auto-hide
+        // Top 12-Hour / 24-Hour & Sec Off / Sec On Toggle Bar with 3-second auto-hide
         AnimatedVisibility(
             visible = controlsVisible,
             enter = slideInVertically(
@@ -153,7 +214,9 @@ fun FlipClockScreen(
         ) {
             FlipClockTopControlBar(
                 is24Hour = is24Hour,
+                showSeconds = showSeconds,
                 onTimeFormatChanged = onTimeFormatChanged,
+                onShowSecondsChanged = onShowSecondsChanged,
                 onInteraction = onInteraction
             )
         }

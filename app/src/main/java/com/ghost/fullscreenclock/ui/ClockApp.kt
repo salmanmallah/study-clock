@@ -197,6 +197,7 @@ fun ClockApp(
                         FlipClockScreen(
                             clockTime = clockTime,
                             is24Hour = is24Hour,
+                            showSeconds = showSeconds,
                             controlsVisible = showControls,
                             onScreenTap = {
                                 showControls = !showControls
@@ -205,6 +206,11 @@ fun ClockApp(
                             onTimeFormatChanged = { new24 ->
                                 is24Hour = new24
                                 prefs.is24HourFormat = new24
+                                registerInteraction()
+                            },
+                            onShowSecondsChanged = { newSec ->
+                                showSeconds = newSec
+                                prefs.showSeconds = newSec
                                 registerInteraction()
                             },
                             onInteraction = { registerInteraction() }
