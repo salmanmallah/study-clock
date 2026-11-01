@@ -2,7 +2,6 @@ package com.ghost.fullscreenclock.ui.screens
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -15,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -68,7 +68,7 @@ private val StopRed = Color(0xFFFF3B30)
 private val WarningAmber = Color(0xFFFFCC00)
 private val DarkGrayText = Color(0xFF8E8E93)
 private val LightGrayText = Color(0xFFAEAEB2)
-private val LapPanelSurface = Color(0xFF121212)
+private val SubtleDivider = Color(0xFF1C1C1E)
 
 @Composable
 fun StopwatchScreen(
@@ -301,7 +301,7 @@ private fun StopwatchControlsAndLaps(
     Column(
         modifier = if (isLandscape) {
             Modifier
-                .width(460.dp)
+                .width(440.dp)
                 .fillMaxHeight()
         } else {
             Modifier.fillMaxWidth()
@@ -319,7 +319,7 @@ private fun StopwatchControlsAndLaps(
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        // Action Buttons Row (matches Timer & Pomodoro)
+        // Action Buttons Row
         Row(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -393,39 +393,61 @@ private fun StopwatchControlsAndLaps(
             }
         }
 
-        Spacer(modifier = Modifier.height(18.dp))
+        // Direct borderless Laps Table on the black screen (only shown when laps exist)
+        if (laps.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(22.dp))
 
-        // Laps Panel
-        if (laps.isEmpty()) {
-            Box(
+            // Table Column Headers
+            Row(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(CharcoalCard.copy(alpha = 0.55f))
-                    .padding(horizontal = 20.dp, vertical = 10.dp),
-                contentAlignment = Alignment.Center
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = if (isRunning) "Tap LAP to record split times" else "No laps recorded yet",
-                    color = LightGrayText,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium
+                    text = "LAP",
+                    color = DarkGrayText,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 1.2.sp,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    text = "SPLIT",
+                    color = DarkGrayText,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 1.2.sp,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.weight(1.2f)
+                )
+                Text(
+                    text = "TOTAL",
+                    color = DarkGrayText,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 1.2.sp,
+                    textAlign = TextAlign.End,
+                    modifier = Modifier.weight(1.2f)
                 )
             }
-        } else {
+
+            HorizontalDivider(
+                color = CharcoalCard,
+                thickness = 1.dp,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+
             LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(if (isLandscape) 170.dp else 210.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(LapPanelSurface)
-                    .border(1.dp, CharcoalCard, RoundedCornerShape(16.dp))
-                    .padding(horizontal = 16.dp, vertical = 6.dp)
+                    .heightIn(max = if (isLandscape) 185.dp else 230.dp)
             ) {
                 items(laps, key = { it.lapNumber }) { lap ->
                     val splitStr = formatStopwatchTime(lap.splitMillis, prefixPlus = true)
                     val totalStr = formatStopwatchTime(lap.totalMillis, prefixPlus = false)
 
-                    val lapLabelColor = when (lap.lapNumber) {
+                    val lapAccentColor = when (lap.lapNumber) {
                         fastestLapNumber -> StartGreen
                         slowestLapNumber -> StopRed
                         else -> LightGrayText
@@ -434,32 +456,36 @@ private fun StopwatchControlsAndLaps(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 9.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                            .padding(horizontal = 8.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Lap ${String.format("%02d", lap.lapNumber)}",
-                            color = lapLabelColor,
+                            text = String.format("#%02d", lap.lapNumber),
+                            color = lapAccentColor,
                             fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            fontFamily = FontFamily.Monospace
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace,
+                            modifier = Modifier.weight(1f)
                         )
                         Text(
                             text = splitStr,
-                            color = LightGrayText,
+                            color = lapAccentColor,
                             fontSize = 14.sp,
-                            fontFamily = FontFamily.Monospace
+                            fontFamily = FontFamily.Monospace,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.weight(1.2f)
                         )
                         Text(
                             text = totalStr,
                             color = PureWhite,
                             fontSize = 15.sp,
                             fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.SemiBold,
+                            textAlign = TextAlign.End,
+                            modifier = Modifier.weight(1.2f)
                         )
                     }
-                    HorizontalDivider(color = CharcoalCard.copy(alpha = 0.6f))
+                    HorizontalDivider(color = SubtleDivider, thickness = 1.dp)
                 }
             }
         }
