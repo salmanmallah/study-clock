@@ -1,140 +1,165 @@
-# Study Clock
+<div align="center">
 
-[![Kotlin](https://img.shields.io/badge/Kotlin-2.0.21-purple.svg?style=flat&logo=kotlin)](https://kotlinlang.org)
-[![Jetpack Compose](https://img.shields.io/badge/Jetpack%20Compose-2024.11.00-brightgreen.svg?style=flat&logo=android)](https://developer.android.com/jetpack/compose)
-[![Material 3](https://img.shields.io/badge/Material%203-Enabled-blue.svg?style=flat)](https://m3.material.io/)
-[![Platform](https://img.shields.io/badge/Platform-Android%2016%20%28API%2036%29-green.svg?style=flat&logo=android)](https://developer.android.com)
-[![Min SDK](https://img.shields.io/badge/Min%20SDK-24%20%28Nougat%29-orange.svg?style=flat)](https://developer.android.com)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+# ⏱️ Study Clock — Fullscreen OLED Desk Clock & Productivity Suite
 
-**Study Clock** is a minimalist, distraction-free native Android clock and productivity application built with **Kotlin** and **Jetpack Compose**. Designed for study desks, bedside stands, and focused productivity sessions, it delivers an authentic, pure fullscreen experience with zero layout shift, seamless mode transitions, and responsive typography.
+[![Kotlin](https://img.shields.io/badge/Kotlin-2.0.21-7F52FF.svg?style=for-the-badge&logo=kotlin&logoColor=white)](https://kotlinlang.org)
+[![Jetpack Compose](https://img.shields.io/badge/Jetpack%20Compose-2024.11.00-4285F4.svg?style=for-the-badge&logo=jetpackcompose&logoColor=white)](https://developer.android.com/jetpack/compose)
+[![Material 3](https://img.shields.io/badge/Material%203-Dark%20OLED-000000.svg?style=for-the-badge&logo=materialdesign&logoColor=white)](https://m3.material.io/)
+[![Platform](https://img.shields.io/badge/Android-API%2024%E2%80%9336-3DDC84.svg?style=for-the-badge&logo=android&logoColor=white)](https://developer.android.com)
+[![License: MIT](https://img.shields.io/badge/License-MIT-F59E0B.svg?style=for-the-badge)](LICENSE)
+
+**A distraction-free, true-black OLED desk clock, 3D mechanical split-flap clock, Pomodoro focus timer, precision stopwatch, and countdown timer built with Kotlin & Jetpack Compose.**
+
+[Screen Gallery](#-live-device-screenshots) • [Key Features](#-key-features) • [Architecture](#-tech-stack--architecture) • [Build & Install](#-getting-started)
+
+</div>
 
 ---
 
-## Screenshots
+## 📸 Live Device Screenshots
 
-| Pure Fullscreen Clock | Controls Overlay & Mode Drawer |
+All screenshots below are captured directly from a physical Android device (`2400 × 1080` Landscape / Portrait) running **Study Clock**.
+
+### 1. Digital Desk Clock & Unified Mode Drawer
+| Pure Fullscreen Digital Clock | Top Format Toggles & 6-Card OLED Mode Dock |
 | :---: | :---: |
-| ![Clean Clock](docs/screenshots/digital_clock_clean.png) | ![Controls Overlay](docs/screenshots/controls_revealed.png) |
+| ![Pure Digital Clock](docs/screenshots/digital_clock_clean.png) | ![Controls & Mode Dock](docs/screenshots/controls_revealed.png) |
+| *Distraction-free true `#000000` OLED display* | *Instant `12H/24H` & `Sec Off/On` toggles + 6 custom OLED vector mode cards* |
 
-| 12-Hour Mode with Seconds | 24-Hour Mode with Seconds | Retro 3D Flip Clock |
-| :---: | :---: | :---: |
-| ![12H Seconds](docs/screenshots/seconds_12h.png) | ![24H Seconds](docs/screenshots/seconds_24h.png) | ![Flip Clock](docs/screenshots/flip_clock.png) |
-
----
-
-## Key Features
-
-### 1. Minimalist, Distraction-Free Digital Clock
-- **Single-Screen Architecture:** Clock stays on a single screen at all times. Format (12H / 24H) and seconds toggles update in place with zero flickering or screen reloads.
-- **Constant Typography:** Geometric typography derived from font cap-height ratios. Format switches preserve identical baseline positioning and font sizing.
-- **Responsive Font Sizing:** Sizing models are derived from reference app physical measurements, with automatic cancellation of system `fontScale` to guarantee text never overflows or clips on devices with accessibility "Large Text" enabled.
-
-### 2. Gesture Controls & Smart Auto-Hide
-- **3-Second Inactivity Auto-Hide:** A single tap reveals the top format controls and bottom mode selector drawer. After 3 seconds of inactivity, controls smoothly slide away to restore a distraction-free pure black OLED display.
-- **Side Drawer Handle:** Subtle curved handle on the right edge allows quick drawer opening without tapping the center clock.
-- **Scroll & Touch Awareness:** Scrolling through modes or interacting with toggles dynamically resets the timer so controls never disappear while in use.
-
-### 3. Comprehensive Productivity Suite (9 Modes)
-1. **12-Hour Digital Clock:** Large digital clock with bottom-aligned AM/PM indicator.
-2. **24-Hour Digital Clock:** Fullscreen military/international time format.
-3. **12-Hour Seconds Clock:** Continuous top-of-the-second updates across all 6 digits (`HH : MM : SS`) with generous screen padding.
-4. **24-Hour Seconds Clock:** Large `HH : MM` with subordinate smaller seconds to the right.
-5. **Retro Mechanical Flip Clock:** Authentic 3D split-flap folding animation with center horizontal seam, hinge notches, and smooth perspective transformations.
-6. **Pomodoro Timer:** 25-minute focus session timer on an eye-friendly warm peach background with session counter and audio/vibration completion alerts.
-7. **Stopwatch:** Portrait timing with dual action controls (Start/Stop, Lap/Reset), millisecond precision, and a structured lap table distinguishing split from cumulative elapsed time.
-8. **Countdown Timer:** Interactive circular progress ring with quick minute adjustments, state preservation, and background `AlarmManager` alerts.
-9. **Settings:** Material 3 preferences screen with format toggles, Keep Screen On switch, and application metadata.
-
-### 4. System & Hardware Integration
-- **True Immersive Mode:** Fullscreen sticky immersive mode (`WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE`) hides status and navigation bars.
-- **Display Cutout Drawing:** Renders into camera cutouts and notches (`LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES`).
-- **Screen Awake Management:** Window flag `FLAG_KEEP_SCREEN_ON` keeps the display on indefinitely when enabled.
-- **Adaptive Launcher Icon:** Full vector adaptive launcher icons compliant with the 66dp safe zone and Material 3 design guidelines.
+| 12-Hour Mode with Seconds (`HH:MM:SS`) | 24-Hour Mode with Seconds (`HH:MM` + `:ss`) |
+| :---: | :---: |
+| ![12-Hour Seconds](docs/screenshots/seconds_12h.png) | ![24-Hour Seconds](docs/screenshots/seconds_24h.png) |
+| *Full 6-digit display with bottom-aligned `AM/PM` badge* | *Primary `HH:MM` display with subordinate seconds counter* |
 
 ---
 
-## Tech Stack & Architecture
-
-- **Language:** Kotlin 2.0.21
-- **UI Toolkit:** Jetpack Compose (BOM `2024.11.00`) + Material 3
-- **Design Pattern:** MVVM (Model-View-ViewModel) with unidirectional data flow
-- **State & Concurrency:** Kotlin Coroutines & `StateFlow` (`clockTickerFlow` aligned with wall-clock millisecond ticks)
-- **Lifecycle:** `collectAsStateWithLifecycle` for lifecycle-aware UI composition
-- **Notifications & Alarms:** `AlarmManager.setExactAndAllowWhileIdle()` and Android 13+ `POST_NOTIFICATIONS` runtime permissions
-- **Build System:** Gradle 8.7.3 with Kotlin DSL (`build.gradle.kts`)
+### 2. Retro 3D Split-Flap Clock (`HH:MM` & `HH:MM:SS`)
+| Classic 2-Card Flip Clock (`Sec Off`) | 3-Card Split-Flap Clock with Live Seconds (`Sec On`) |
+| :---: | :---: |
+| ![2-Card Flip Clock](docs/screenshots/flip_clock.png) | ![3-Card Flip Clock with Seconds](docs/screenshots/flip_clock_seconds.png) |
+| *Two-tone charcoal flaps (`#222222` / `#191919`) with `#050505` center seam* | *3D perspective `rotationX` split-flap animation ticking every second* |
 
 ---
 
-## Project Structure
+### 3. Dark OLED Productivity Suite (Timer, Stopwatch & Pomodoro)
+| Countdown Timer (Quick Presets & Clockwise Ring) | Precision Stopwatch (60s Dial & Live Laps Table) |
+| :---: | :---: |
+| ![Countdown Timer](docs/screenshots/timer.png) | ![Stopwatch with Laps](docs/screenshots/stopwatch.png) |
+| *Clockwise right-first depleting ring (`Green → Amber → Red`), quick presets (`1m–45m`), fine-tune chips (`±1m`, `±10s`), and synthesized `Beep-Beep` digital alarm* | *60s sweeping progress ring, centisecond precision, and direct borderless lap table with automatic scroll-to-top on new laps* |
 
-```
+| Pomodoro Focus Timer (25-Min Sessions) | Material 3 Dark OLED Settings |
+| :---: | :---: |
+| ![Pomodoro Timer](docs/screenshots/pomodoro.png) | <img src="docs/screenshots/settings.png" width="260" alt="Settings Screen" /> |
+| *Tomato-red (`#FF5A3C`) circular progress dial & session tracker* | *Global time format, Keep Screen On switch & app info* |
+
+---
+
+## ✨ Key Features
+
+### 🕰️ Minimalist Digital & Split-Flap Clocks
+- **Zero-Flicker Format Switching:** Toggle between `12-Hour` / `24-Hour` and `Sec Off` / `Sec On` directly from the floating top bar without screen reloads or layout jumps.
+- **System Font-Scale Immunity:** Custom `LocalDensity` typography calculations neutralize Android accessibility `fontScale` inflation so digits never clip or overflow on any screen.
+- **Authentic 3D Flip Clock:** Real-time `0° → 90° → 180°` `graphicsLayer` perspective folding with dynamic shadow alpha, two-tone charcoal cards, and both 2-card (`HH:MM`) and 3-card (`HH:MM:SS`) modes.
+
+### ⏲️ Smart Countdown Timer
+- **Clockwise Right-First Depletion:** Custom `Canvas` arc depletes clockwise starting from 12 o'clock through 3, 6, and 9 o'clock.
+- **Dynamic Color Progression:** Smoothly interpolates ring color via `lerp` from **Green (`#34C759`) → Amber (`#FFCC00`) → Orange → Red (`#FF3B30`)** as time runs out.
+- **Quick Set & Fine-Tune Controls:** One-tap preset pills (`1m`, `5m`, `10m`, `15m`, `25m`, `45m`) plus seconds-level adjustment chips (`−1m`, `−10s`, `+10s`, `+1m`).
+- **Synthesized Digital "Beep-Beep" Alarm:** Custom 44.1 kHz 16-bit PCM `AudioTrack` (`USAGE_ALARM`) synthesizer generates classic digital watch `BEEP-BEEP` bursts alongside `AlarmManager` notifications and haptics.
+
+### ⏱️ Precision Stopwatch & Pomodoro
+- **60-Second Sweeping Stopwatch Dial:** 60fps (`16ms` tick) stopwatch with green sweeping ring and jitter-free monospace typography.
+- **Borderless Auto-Scrolling Lap Table:** Clean 3-column table (`LAP`, `SPLIT`, `TOTAL`) rendered directly on the OLED canvas that automatically scrolls to the newest lap (`#01, #02...`) at the top without shifting button positions.
+- **Dark OLED Pomodoro Timer:** 25-minute focus sessions with tomato-red circular progress ring and completed session counter.
+
+### 🎛️ Unified 6-Card Mode Dock & Gesture Controls
+- **Consolidated 6-Card Bottom Drawer:** Centered landscape dock (`Digital Clock`, `Flip Clock`, `Pomodoro`, `Stopwatch`, `Timer`, `Settings`) with custom-drawn Dark OLED vector/canvas icons.
+- **3-Second Smart Auto-Hide:** Tapping anywhere reveals the top toggle bar and bottom mode dock; 3 seconds of inactivity smoothly slides them away.
+
+---
+
+## 🛠️ Tech Stack & Architecture
+
+| Layer | Technology |
+| :--- | :--- |
+| **Language** | Kotlin `2.0.21` |
+| **UI Framework** | Jetpack Compose (`BOM 2024.11.00`) + Material 3 + Custom `Canvas` & `graphicsLayer` |
+| **Architecture** | MVVM (`TimersViewModel`, unidirectional `StateFlow` state, `ClockPreferences`) |
+| **Concurrency** | Kotlin Coroutines (`clockTickerFlow` aligned to wall-clock seconds, 60fps timer/stopwatch loops) |
+| **Audio & Alarms** | PCM `AudioTrack` (`USAGE_ALARM`) waveform synthesis + `AlarmManager.setExactAndAllowWhileIdle()` |
+| **Windowing** | Edge-to-Edge Immersive Sticky Fullscreen (`BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE`) + `FLAG_KEEP_SCREEN_ON` |
+
+---
+
+## 📂 Project Structure
+
+```text
 study-clock/
-├── app/
-│   ├── src/main/
-│   │   ├── AndroidManifest.xml
-│   │   ├── java/com/ghost/fullscreenclock/
-│   │   │   ├── MainActivity.kt               # Immersive window setup & lifecycle
-│   │   │   ├── model/ClockMode.kt            # 9 supported clock & timer modes
-│   │   │   ├── preferences/ClockPreferences.kt # SharedPreferences storage
-│   │   │   ├── receiver/TimerAlertReceiver.kt # BroadcastReceiver for alarm alerts
-│   │   │   ├── theme/                        # Color, Theme, & Type definitions
-│   │   │   ├── time/                         # ClockTime ticker flows
-│   │   │   └── ui/
-│   │   │       ├── ClockApp.kt               # Root container & navigation orchestration
-│   │   │       ├── components/               # DigitalClock, FlipCard, BottomModeDrawer, SideHandle
-│   │   │       ├── screens/                  # DigitalClockScreen, FlipClockScreen, Pomodoro, etc.
-│   │   │       └── viewmodel/TimersViewModel.kt # Shared state for timers, stopwatch & alerts
-│   │   └── res/                              # Drawables, mipmaps, fonts, and strings
-│   └── build.gradle.kts
-├── docs/screenshots/                         # Application preview screenshots
-├── .gitignore                                # Comprehensive Android & build ignores
-├── LICENSE                                   # MIT License
+├── app/src/main/
+│   ├── AndroidManifest.xml
+│   ├── java/com/ghost/fullscreenclock/
+│   │   ├── MainActivity.kt                  # Edge-to-edge immersive fullscreen & keep-screen-on setup
+│   │   ├── model/ClockMode.kt               # Clock & productivity mode definitions
+│   │   ├── preferences/ClockPreferences.kt  # Persistent SharedPreferences wrapper
+│   │   ├── receiver/TimerAlertReceiver.kt   # BroadcastReceiver + PCM digital beep-beep synthesizer
+│   │   ├── theme/                           # PureBlack OLED palette, Roboto typography & Material 3 theme
+│   │   ├── time/ClockTicker.kt              # Wall-clock synchronized second ticker Flow
+│   │   └── ui/
+│   │       ├── ClockApp.kt                  # Root state host, orientation manager & drawer orchestration
+│   │       ├── components/
+│   │       │   ├── BottomModeDrawer.kt      # 6-card centered dock with custom OLED vector/canvas icons
+│   │       │   ├── DigitalClock.kt          # Cap-height calibrated responsive digital clock renderer
+│   │       │   ├── FlipCard.kt              # 3D split-flap card component with perspective shadow
+│   │       │   └── SideDrawerHandle.kt      # Edge pull handle for quick mode switching
+│   │       ├── screens/
+│   │       │   ├── DigitalClockScreen.kt    # Digital clock + floating 12H/24H & Sec Off/On control bar
+│   │       │   ├── FlipClockScreen.kt       # 2-card (HH:MM) & 3-card (HH:MM:SS) split-flap clock screen
+│   │       │   ├── PomodoroScreen.kt        # Dark OLED Pomodoro focus timer screen
+│   │       │   ├── StopwatchScreen.kt       # 60s dial stopwatch + auto-scrolling borderless lap table
+│   │       │   ├── TimerScreen.kt           # Clockwise color-shifting countdown timer + quick presets
+│   │       │   └── SettingsScreen.kt        # Material 3 dark preferences screen
+│   │       └── viewmodel/TimersViewModel.kt # Stopwatch, Countdown Timer & Pomodoro state machine
+│   └── res/                                 # Fonts, vector icons, and string resources
+├── docs/screenshots/                        # Real device screenshots across all modes
+├── build.gradle.kts
 └── README.md
 ```
 
 ---
 
-## Getting Started
+## 🚀 Getting Started
 
 ### Prerequisites
-- **Android Studio:** Android Studio Ladybug (2024.2+) or newer
-- **JDK:** Java Development Kit 21
-- **Android SDK:** Compile SDK 36, Minimum SDK 24
+- **Android Studio:** Ladybug (`2024.2+`) or newer
+- **JDK:** Java 21
+- **Android SDK:** Compile SDK `36`, Min SDK `24`
 
-### Building from Source
+### Build & Install via CLI
 
-1. Clone the repository:
+1. **Clone the repository:**
    ```bash
-   git clone https://github.com/your-username/study-clock.git
+   git clone https://github.com/salmanmallah/study-clock.git
    cd study-clock
    ```
 
-2. Build the debug APK using the Gradle wrapper:
-   - **Linux / macOS:**
-     ```bash
-     ./gradlew assembleDebug
-     ```
-   - **Windows:**
-     ```powershell
-     .\gradlew.bat assembleDebug
-     ```
-
-   The generated APK will be located at:
-   `app/build/outputs/apk/debug/app-debug.apk`
-
-3. Install on a connected physical device or emulator via ADB:
+2. **Assemble the Debug APK:**
+   ```powershell
+   # Windows PowerShell
+   .\gradlew.bat assembleDebug
+   ```
    ```bash
-   adb install -r app/build/outputs/apk/debug/app-debug.apk
+   # Linux / macOS
+   ./gradlew assembleDebug
    ```
 
-4. Launch the application:
+3. **Install & Launch on a connected device via ADB:**
    ```bash
+   adb install -r app/build/outputs/apk/debug/app-debug.apk
    adb shell am start -n com.ghost.fullscreenclock/.MainActivity
    ```
 
 ---
 
-## License
+## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+Distributed under the **MIT License**. See [`LICENSE`](LICENSE) for full details.
