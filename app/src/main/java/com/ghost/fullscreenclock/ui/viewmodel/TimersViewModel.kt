@@ -130,8 +130,8 @@ class TimersViewModel(application: Application) : AndroidViewModel(application) 
     // ==========================================
     // COUNTDOWN TIMER STATE & LOGIC
     // ==========================================
-    private val _timerSetMinutes = MutableStateFlow(5)
-    val timerSetMinutes: StateFlow<Int> = _timerSetMinutes.asStateFlow()
+    private val _timerSetSeconds = MutableStateFlow(5 * 60)
+    val timerSetSeconds: StateFlow<Int> = _timerSetSeconds.asStateFlow()
 
     private val _timerRemainingMillis = MutableStateFlow(5 * 60 * 1000L)
     val timerRemainingMillis: StateFlow<Long> = _timerRemainingMillis.asStateFlow()
@@ -146,16 +146,22 @@ class TimersViewModel(application: Application) : AndroidViewModel(application) 
     private var timerJob: Job? = null
 
     private fun updateCanAdjust() {
-        val setTotal = _timerSetMinutes.value * 60 * 1000L
+        val setTotal = _timerSetSeconds.value * 1000L
         _canAdjustTimer.value = !_timerRunning.value && (_timerRemainingMillis.value == setTotal)
     }
 
-    fun adjustTimerMinutes(delta: Int) {
+    /** Adds (or subtracts) seconds to the preset duration. Range: 5s .. 99h59m59s. */
+    fun adjustTimerSeconds(deltaSeconds: Int) {
         if (!_canAdjustTimer.value) return
-        val current = _timerSetMinutes.value
-        val updated = (current + delta).coerceIn(1, 180)
-        _timerSetMinutes.value = updated
-        _timerRemainingMillis.value = updated * 60 * 1000L
+        setTimerDurationSeconds(_timerSetSeconds.value + deltaSeconds)
+    }
+
+    /** Sets the preset duration directly (e.g. from quick preset chips). */
+    fun setTimerDurationSeconds(seconds: Int) {
+        if (!_canAdjustTimer.value) return
+        val updated = seconds.coerceIn(5, 99 * 3600 + 59 * 60 + 59)
+        _timerSetSeconds.value = updated
+        _timerRemainingMillis.value = updated * 1000L
         updateCanAdjust()
     }
 
@@ -170,7 +176,7 @@ class TimersViewModel(application: Application) : AndroidViewModel(application) 
     fun startTimer() {
         if (_timerRunning.value) return
         if (_timerRemainingMillis.value <= 0L) {
-            _timerRemainingMillis.value = _timerSetMinutes.value * 60 * 1000L
+            _timerRemainingMillis.value = _timerSetSeconds.value * 1000L
         }
         _timerRunning.value = true
         updateCanAdjust()
@@ -219,7 +225,7 @@ class TimersViewModel(application: Application) : AndroidViewModel(application) 
         _timerRunning.value = false
         cancelAlarm(TimerAlertReceiver.TYPE_TIMER)
         clearTimerPersistence()
-        _timerRemainingMillis.value = _timerSetMinutes.value * 60 * 1000L
+        _timerRemainingMillis.value = _timerSetSeconds.value * 1000L
         updateCanAdjust()
     }
 
