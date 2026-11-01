@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -32,18 +33,23 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.ghost.fullscreenclock.theme.PomodoroBrickRed
-import com.ghost.fullscreenclock.theme.PomodoroPeachBg
-import com.ghost.fullscreenclock.theme.PomodoroYellowAccent
-import com.ghost.fullscreenclock.theme.RobotoFont
+import com.ghost.fullscreenclock.theme.CharcoalCard
+import com.ghost.fullscreenclock.theme.PureBlack
+import com.ghost.fullscreenclock.theme.PureWhite
 import com.ghost.fullscreenclock.ui.viewmodel.TimersViewModel
+
+// Tomato accent used on the dark theme (same surfaces/shapes as the Timer screen)
+private val TomatoAccent = Color(0xFFFF5A3C)
+private val MutedText = Color(0xFF8E8E93)
 
 @Composable
 fun PomodoroScreen(
@@ -56,15 +62,21 @@ fun PomodoroScreen(
     val completedSessions by viewModel.pomodoroCompletedSessions.collectAsState()
     val interactionSource = remember { MutableInteractionSource() }
 
+    val totalMillis = viewModel.pomodoroTotalMillis.coerceAtLeast(1000L)
+    val progress = (remainingMillis.toFloat() / totalMillis.toFloat()).coerceIn(0f, 1f)
     val remainingTotalSec = (remainingMillis + 999) / 1000
-    val minutes = remainingTotalSec / 60
-    val seconds = remainingTotalSec % 60
-    val timeFormatted = String.format("%02d:%02d", minutes, seconds)
+    val timeFormatted = String.format("%02d:%02d", remainingTotalSec / 60, remainingTotalSec % 60)
+    val isIdle = !isRunning && remainingMillis >= totalMillis
+    val status = when {
+        isRunning -> "Focus"
+        isIdle -> "Ready"
+        else -> "Paused"
+    }
 
     BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
-            .background(PomodoroPeachBg)
+            .background(PureBlack)
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
@@ -72,117 +84,157 @@ fun PomodoroScreen(
             ),
         contentAlignment = Alignment.Center
     ) {
-        val density = LocalDensity.current
         val isLandscape = maxWidth > maxHeight
+        val density = LocalDensity.current
 
-        // Dynamic font size derived from available viewport, ignoring system fontScale
-        val pomoFontSize = with(density) {
-            val baseDp = if (isLandscape) {
-                (maxHeight * 0.35f).coerceIn(90.dp, 140.dp)
-            } else {
-                (maxWidth * 0.25f).coerceIn(70.dp, 110.dp)
-            }
-            (baseDp.toPx() / density.fontScale).toSp()
+        val dialSize = if (isLandscape) {
+            (maxHeight * 0.72f).coerceIn(180.dp, 300.dp)
+        } else {
+            (maxWidth * 0.68f).coerceIn(200.dp, 300.dp)
+        }
+        val timerFontSize = with(density) {
+            ((dialSize * 0.21f).toPx() / density.fontScale).toSp()
         }
 
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-            modifier = Modifier.padding(16.dp)
-        ) {
-            // Label & Session Counter Pill
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+        val dial: @Composable () -> Unit = {
+            Box(modifier = Modifier.size(dialSize), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(
+                    progress = { 1f },
+                    modifier = Modifier.fillMaxSize(),
+                    color = CharcoalCard,
+                    strokeWidth = 8.dp,
+                    trackColor = CharcoalCard
+                )
+                CircularProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier.fillMaxSize(),
+                    color = TomatoAccent,
+                    strokeWidth = 8.dp,
+                    trackColor = Color.Transparent
+                )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = timeFormatted,
+                        color = PureWhite,
+                        fontSize = timerFontSize,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                        maxLines = 1,
+                        softWrap = false,
+                        textAlign = TextAlign.Center,
+                        style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        text = status.uppercase(),
+                        color = MutedText,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        letterSpacing = 1.5.sp
+                    )
+                }
+            }
+        }
+
+        val controls: @Composable () -> Unit = {
+            Column(
+                modifier = if (isLandscape) Modifier.width(470.dp) else Modifier,
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
             ) {
                 Text(
-                    text = "FOCUS TIME",
-                    color = PomodoroBrickRed.copy(alpha = 0.85f),
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = RobotoFont,
-                    letterSpacing = 2.sp
+                    text = "POMODORO",
+                    color = MutedText,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 1.5.sp
                 )
-                if (completedSessions > 0) {
-                    Box(
+                Spacer(Modifier.height(10.dp))
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(CharcoalCard)
+                        .padding(horizontal = 18.dp, vertical = 9.dp)
+                ) {
+                    Text(
+                        text = if (completedSessions > 0) "? $completedSessions sessions done" else "25 min focus session",
+                        color = PureWhite,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1
+                    )
+                }
+
+                Spacer(Modifier.height(24.dp))
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Button(
+                        onClick = { viewModel.togglePomodoro() },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (isRunning) Color(0xFFFF3B30) else TomatoAccent
+                        ),
+                        shape = RoundedCornerShape(28.dp),
                         modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(PomodoroBrickRed)
-                            .padding(horizontal = 8.dp, vertical = 2.dp)
+                            .height(54.dp)
+                            .width(150.dp)
                     ) {
+                        Icon(
+                            imageVector = if (isRunning) Icons.Default.Pause else Icons.Default.PlayArrow,
+                            contentDescription = null,
+                            tint = PureWhite,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(Modifier.width(6.dp))
                         Text(
-                            text = "✓ $completedSessions",
-                            color = PomodoroPeachBg,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = RobotoFont
+                            text = if (isRunning) "PAUSE" else "START",
+                            color = PureWhite,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    IconButton(
+                        onClick = { viewModel.resetPomodoro() },
+                        modifier = Modifier
+                            .size(54.dp)
+                            .clip(CircleShape)
+                            .background(CharcoalCard)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Reset Pomodoro",
+                            tint = PureWhite,
+                            modifier = Modifier.size(26.dp)
                         )
                     }
                 }
             }
+        }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Main Time Display
-            Text(
-                text = timeFormatted,
-                color = PomodoroBrickRed,
-                fontSize = pomoFontSize,
-                fontWeight = FontWeight.Bold,
-                fontFamily = RobotoFont,
-                style = TextStyle(
-                    platformStyle = PlatformTextStyle(includeFontPadding = false),
-                    textAlign = TextAlign.Center
-                )
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Controls
+        if (isLandscape) {
             Row(
-                horizontalArrangement = Arrangement.spacedBy(20.dp),
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 56.dp, vertical = 24.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                // Play / Pause Button
-                Button(
-                    onClick = { viewModel.togglePomodoro() },
-                    colors = ButtonDefaults.buttonColors(containerColor = PomodoroBrickRed),
-                    shape = RoundedCornerShape(24.dp),
-                    modifier = Modifier
-                        .height(52.dp)
-                        .padding(horizontal = 4.dp)
-                ) {
-                    Icon(
-                        imageVector = if (isRunning) Icons.Default.Pause else Icons.Default.PlayArrow,
-                        contentDescription = if (isRunning) "Pause" else "Start",
-                        tint = PomodoroPeachBg,
-                        modifier = Modifier.size(26.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = if (isRunning) "PAUSE" else "START",
-                        color = PomodoroPeachBg,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = RobotoFont
-                    )
-                }
-
-                // Reset Button
-                IconButton(
-                    onClick = { viewModel.resetPomodoro() },
-                    modifier = Modifier
-                        .size(52.dp)
-                        .clip(CircleShape)
-                        .background(PomodoroYellowAccent)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Refresh,
-                        contentDescription = "Reset Pomodoro",
-                        tint = PomodoroBrickRed,
-                        modifier = Modifier.size(26.dp)
-                    )
-                }
+                dial()
+                controls()
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                dial()
+                Spacer(Modifier.height(28.dp))
+                controls()
             }
         }
     }

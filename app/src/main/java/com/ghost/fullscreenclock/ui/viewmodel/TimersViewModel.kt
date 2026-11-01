@@ -235,6 +235,8 @@ class TimersViewModel(application: Application) : AndroidViewModel(application) 
     // ==========================================
     var useDebugPomodoroDuration: Boolean = false // Debug-only flag for short duration verification
 
+    val pomodoroTotalMillis: Long get() = pomodoroTargetDuration
+
     private val pomodoroTargetDuration: Long
         get() = if (BuildConfig.DEBUG && useDebugPomodoroDuration) POMODORO_DEBUG_DURATION else POMODORO_STANDARD_DURATION
 
