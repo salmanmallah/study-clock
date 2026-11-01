@@ -197,10 +197,17 @@ fun ClockApp(
                         FlipClockScreen(
                             clockTime = clockTime,
                             is24Hour = is24Hour,
+                            controlsVisible = showControls,
                             onScreenTap = {
                                 showControls = !showControls
                                 if (showControls) registerInteraction()
-                            }
+                            },
+                            onTimeFormatChanged = { new24 ->
+                                is24Hour = new24
+                                prefs.is24HourFormat = new24
+                                registerInteraction()
+                            },
+                            onInteraction = { registerInteraction() }
                         )
                     }
                     ClockMode.POMODORO -> {

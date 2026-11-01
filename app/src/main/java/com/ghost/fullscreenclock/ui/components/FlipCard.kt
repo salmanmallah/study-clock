@@ -39,8 +39,12 @@ import androidx.compose.ui.unit.sp
 import com.ghost.fullscreenclock.theme.PureWhite
 import com.ghost.fullscreenclock.theme.RobotoFont
 
-// Charcoal card background matching original app (RGB [34, 34, 34])
-private val CardBackground = Color(0xFF222222)
+// Two-tone charcoal flap backgrounds matching original app:
+// Top half RGB [34, 34, 34] (#222222), Bottom half RGB [25, 25, 25] (#191919)
+private val CardTopBackground = Color(0xFF222222)
+private val CardBottomBackground = Color(0xFF191919)
+private val SeamColor = Color(0xFF050505)
+private val DigitOffWhite = Color(0xFFF3F3F3)
 private val CornerLabelColor = Color(0xFFBDBDBD)
 
 @Composable
@@ -163,7 +167,12 @@ fun FlipCard(
         }
 
         // ================= CENTER SEAM GAP =================
-        Spacer(modifier = Modifier.height(seamHeight))
+        Box(
+            modifier = Modifier
+                .width(cardWidth)
+                .height(seamHeight)
+                .background(SeamColor)
+        )
 
         // ================= 2. BOTTOM HALF =================
         Box(
@@ -239,7 +248,7 @@ private fun HalfCardContent(
             .width(cardWidth)
             .height(halfHeight)
             .clip(shape)
-            .background(CardBackground)
+            .background(if (isTop) CardTopBackground else CardBottomBackground)
     ) {
         Box(
             modifier = Modifier
@@ -262,9 +271,9 @@ private fun HalfCardContent(
         ) {
             Text(
                 text = text,
-                color = PureWhite,
+                color = DigitOffWhite,
                 fontSize = fontSize,
-                fontWeight = FontWeight.Normal,
+                fontWeight = FontWeight.Light,
                 fontFamily = RobotoFont,
                 textAlign = TextAlign.Center,
                 maxLines = 1,
@@ -282,7 +291,7 @@ private fun HalfCardContent(
                     fontSize = with(LocalDensity.current) {
                         ((cardHeight * 0.08f).toPx() / fontScale).toSp()
                     },
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.Medium,
                     fontFamily = RobotoFont,
                     style = TextStyle(
                         platformStyle = PlatformTextStyle(includeFontPadding = false)
@@ -290,8 +299,8 @@ private fun HalfCardContent(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
                         .padding(
-                            start = cardWidth * 0.08f,
-                            bottom = cardHeight * 0.07f
+                            start = cardWidth * 0.077f,
+                            bottom = cardHeight * 0.068f
                         )
                 )
             }
