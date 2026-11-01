@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">Study Clock</string>
+    <string name="mode_digital_12">12-Hour</string>
+    <string name="mode_digital_24">24-Hour</string>
+    <string name="mode_seconds">Seconds</string>
+    <string name="mode_flip">Flip Clock</string>
+    <string name="mode_pomodoro">Pomodoro</string>
+    <string name="mode_stopwatch">Stopwatch</string>
+    <string name="mode_timer">Timer</string>
+    <string name="mode_settings">Settings</string>
+</resources>

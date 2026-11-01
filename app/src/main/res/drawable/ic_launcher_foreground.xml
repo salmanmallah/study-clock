@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Clock Dial Face Inset (Radius 27dp, within 33dp safe circle) -->
+    <path
+        android:fillColor="#1B1E29"
+        android:strokeColor="#363A4D"
+        android:strokeWidth="1.2"
+        android:pathData="M54,54m-27,0a27,27 0,1 1,54 0a27,27 0,1 1,-54 0" />
+
+    <!-- Cardinal Ticks (12, 3, 6, 9) -->
+    <!-- 12 o'clock tick -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2.0"
+        android:strokeLineCap="round"
+        android:pathData="M54,30 L54,34" />
+    <!-- 3 o'clock tick -->
+    <path
+        android:strokeColor="#9096A8"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:pathData="M78,54 L74,54" />
+    <!-- 6 o'clock tick -->
+    <path
+        android:strokeColor="#9096A8"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:pathData="M54,78 L54,74" />
+    <!-- 9 o'clock tick -->
+    <path
+        android:strokeColor="#9096A8"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:pathData="M30,54 L34,54" />
+
+    <!-- Horizontal Flip Seam Across Dial Center -->
+    <path
+        android:strokeColor="#0E1015"
+        android:strokeWidth="1.5"
+        android:pathData="M27,54 L81,54" />
+
+    <!-- Hour Hand pointing to 10 o'clock (bold white) -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3.2"
+        android:strokeLineCap="round"
+        android:pathData="M54,54 L40,40" />
+
+    <!-- Minute Hand pointing to 2 o'clock (neon cyan accent) -->
+    <path
+        android:strokeColor="#00E5FF"
+        android:strokeWidth="2.2"
+        android:strokeLineCap="round"
+        android:pathData="M54,54 L71,41" />
+
+    <!-- Center Pivot Disc -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,54m-3.5,0a3.5,3.5 0,1 1,7 0a3.5,3.5 0,1 1,-7 0" />
+    <path
+        android:fillColor="#00E5FF"
+        android:pathData="M54,54m-1.5,0a1.5,1.5 0,1 1,3 0a1.5,1.5 0,1 1,-3 0" />
+</vector>
