@@ -6,10 +6,10 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -22,164 +22,202 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
-import com.ghost.fullscreenclock.theme.CardSeamDivider
-import com.ghost.fullscreenclock.theme.CharcoalCard
+import androidx.compose.ui.unit.sp
 import com.ghost.fullscreenclock.theme.PureWhite
 import com.ghost.fullscreenclock.theme.RobotoFont
+
+// Charcoal card background matching original app (RGB [34, 34, 34])
+private val CardBackground = Color(0xFF222222)
+private val CornerLabelColor = Color(0xFFBDBDBD)
 
 @Composable
 fun FlipCard(
     value: String,
     cardWidth: Dp,
     cardHeight: Dp,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    bottomCornerLabel: String? = null,
+    seamHeight: Dp = 4.dp,
+    cornerRadius: Dp = 16.dp
 ) {
     var currentValue by remember { mutableStateOf(value) }
     var previousValue by remember { mutableStateOf(value) }
+    var currentLabel by remember { mutableStateOf(bottomCornerLabel) }
+    var previousLabel by remember { mutableStateOf(bottomCornerLabel) }
     val flipProgress = remember { Animatable(180f) }
 
-    LaunchedEffect(value) {
-        if (value != currentValue) {
+    LaunchedEffect(value, bottomCornerLabel) {
+        if (value != currentValue || bottomCornerLabel != currentLabel) {
             previousValue = currentValue
+            previousLabel = currentLabel
             currentValue = value
+            currentLabel = bottomCornerLabel
             flipProgress.snapTo(0f)
             flipProgress.animateTo(
                 targetValue = 180f,
-                animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing)
+                animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing)
             )
         }
     }
 
     val density = LocalDensity.current
-    val halfHeight = cardHeight / 2
-    val topShape = RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp, bottomStart = 0.dp, bottomEnd = 0.dp)
-    val bottomShape = RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp, bottomStart = 14.dp, bottomEnd = 14.dp)
+    val cardHeightPx = with(density) { cardHeight.roundToPx() }
+    val seamHeightPx = with(density) { seamHeight.roundToPx() }
+    val topHalfHeightPx = (cardHeightPx - seamHeightPx) / 2
+    val bottomHalfHeightPx = cardHeightPx - seamHeightPx - topHalfHeightPx
 
-    // Calculate dp-derived font size that ignores system fontScale to prevent overflowing card
+    val topHalfHeight = with(density) { topHalfHeightPx.toDp() }
+    val bottomHalfHeight = with(density) { bottomHalfHeightPx.toDp() }
+
+    val topShape = RoundedCornerShape(
+        topStart = cornerRadius,
+        topEnd = cornerRadius,
+        bottomStart = 0.dp,
+        bottomEnd = 0.dp
+    )
+    val bottomShape = RoundedCornerShape(
+        topStart = 0.dp,
+        topEnd = 0.dp,
+        bottomStart = cornerRadius,
+        bottomEnd = cornerRadius
+    )
+
+    // Font size tuned so glyph cap height is ~51.4% of card height, matching original
     val fontSize: TextUnit = with(density) {
-        val baseDp = cardHeight * 0.58f
-        (baseDp.toPx() / density.fontScale).toSp()
+        val basePx = cardHeightPx * 0.70f
+        (basePx / density.fontScale).toSp()
     }
 
-    Box(
+    val isAnimating = flipProgress.value < 180f
+
+    Column(
         modifier = modifier
             .width(cardWidth)
             .height(cardHeight)
     ) {
-        // Upper & Lower Halves Container (total height exactly equals cardHeight)
-        Column(modifier = Modifier.fillMaxSize()) {
-            // ================= 1. TOP HALF =================
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(halfHeight)
-            ) {
-                // Static background: Top half of CURRENT new value
-                HalfCardContent(
-                    text = currentValue,
-                    isTop = true,
-                    cardWidth = cardWidth,
-                    cardHeight = cardHeight,
-                    fontSize = fontSize,
-                    shape = topShape,
-                    modifier = Modifier.fillMaxSize()
-                )
+        // ================= 1. TOP HALF =================
+        Box(
+            modifier = Modifier
+                .width(cardWidth)
+                .height(topHalfHeight)
+        ) {
+            // Static background: Top half of CURRENT value
+            HalfCardContent(
+                text = currentValue,
+                isTop = true,
+                cardWidth = cardWidth,
+                cardHeight = cardHeight,
+                halfHeight = topHalfHeight,
+                seamHeight = seamHeight,
+                fontSize = fontSize,
+                shape = topShape,
+                bottomCornerLabel = currentLabel
+            )
 
-                // Flipping top flap: Top half of PREVIOUS value (rotates 0° -> -90°)
-                // Reading flipProgress inside graphicsLayer lambda to prevent recomposition on every tick
-                HalfCardContent(
-                    text = previousValue,
-                    isTop = true,
-                    cardWidth = cardWidth,
-                    cardHeight = cardHeight,
-                    fontSize = fontSize,
-                    shape = topShape,
+            // Folding flap (during 0° -> 90°): Top half of PREVIOUS value
+            if (isAnimating && flipProgress.value < 90f) {
+                val angle = flipProgress.value
+                val shadowAlpha = (angle / 90f) * 0.35f
+                Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .graphicsLayer {
-                            val angle = flipProgress.value
                             rotationX = -angle
-                            alpha = if (angle < 90f) 1f else 0f
                             transformOrigin = TransformOrigin(0.5f, 1.0f)
                             cameraDistance = 16f * this.density
                         }
-                )
-            }
-
-            // ================= 2. BOTTOM HALF =================
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(halfHeight)
-            ) {
-                // Static background: Bottom half of PREVIOUS value while flipping, else CURRENT
-                HalfCardContent(
-                    text = if (flipProgress.value < 180f) previousValue else currentValue,
-                    isTop = false,
-                    cardWidth = cardWidth,
-                    cardHeight = cardHeight,
-                    fontSize = fontSize,
-                    shape = bottomShape,
-                    modifier = Modifier.fillMaxSize()
-                )
-
-                // Falling bottom flap: Bottom half of CURRENT value (rotates 90° -> 0°)
-                HalfCardContent(
-                    text = currentValue,
-                    isTop = false,
-                    cardWidth = cardWidth,
-                    cardHeight = cardHeight,
-                    fontSize = fontSize,
-                    shape = bottomShape,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .graphicsLayer {
-                            val angle = 180f - flipProgress.value
-                            rotationX = angle
-                            alpha = if (flipProgress.value >= 90f) 1f else 0f
-                            transformOrigin = TransformOrigin(0.5f, 0.0f)
-                            cameraDistance = 16f * this.density
-                        }
-                )
+                ) {
+                    HalfCardContent(
+                        text = previousValue,
+                        isTop = true,
+                        cardWidth = cardWidth,
+                        cardHeight = cardHeight,
+                        halfHeight = topHalfHeight,
+                        seamHeight = seamHeight,
+                        fontSize = fontSize,
+                        shape = topShape,
+                        bottomCornerLabel = previousLabel
+                    )
+                    // Folding shadow
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(topShape)
+                            .background(Color.Black.copy(alpha = shadowAlpha))
+                    )
+                }
             }
         }
 
-        // 3dp Center Seam Overlaid exactly across the card center (does not increase total cardHeight)
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(3.dp)
-                .align(Alignment.Center)
-                .background(CardSeamDivider)
-        )
+        // ================= CENTER SEAM GAP =================
+        Spacer(modifier = Modifier.height(seamHeight))
 
-        // Mechanical side hinge notches
+        // ================= 2. BOTTOM HALF =================
         Box(
             modifier = Modifier
-                .width(5.dp)
-                .height(12.dp)
-                .align(Alignment.CenterStart)
-                .background(CardSeamDivider, RoundedCornerShape(topEnd = 3.dp, bottomEnd = 3.dp))
-        )
-        Box(
-            modifier = Modifier
-                .width(5.dp)
-                .height(12.dp)
-                .align(Alignment.CenterEnd)
-                .background(CardSeamDivider, RoundedCornerShape(topStart = 3.dp, bottomStart = 3.dp))
-        )
+                .width(cardWidth)
+                .height(bottomHalfHeight)
+        ) {
+            // Static background: Bottom half of PREVIOUS value while flipping, else CURRENT
+            HalfCardContent(
+                text = if (isAnimating) previousValue else currentValue,
+                isTop = false,
+                cardWidth = cardWidth,
+                cardHeight = cardHeight,
+                halfHeight = bottomHalfHeight,
+                seamHeight = seamHeight,
+                fontSize = fontSize,
+                shape = bottomShape,
+                bottomCornerLabel = if (isAnimating) previousLabel else currentLabel
+            )
+
+            // Falling flap (during 90° -> 180°): Bottom half of CURRENT value
+            if (isAnimating && flipProgress.value >= 90f) {
+                val angle = 180f - flipProgress.value
+                val shadowAlpha = (angle / 90f) * 0.35f
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            rotationX = angle
+                            transformOrigin = TransformOrigin(0.5f, 0.0f)
+                            cameraDistance = 16f * this.density
+                        }
+                ) {
+                    HalfCardContent(
+                        text = currentValue,
+                        isTop = false,
+                        cardWidth = cardWidth,
+                        cardHeight = cardHeight,
+                        halfHeight = bottomHalfHeight,
+                        seamHeight = seamHeight,
+                        fontSize = fontSize,
+                        shape = bottomShape,
+                        bottomCornerLabel = currentLabel
+                    )
+                    // Landing shadow that lightens to zero
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(bottomShape)
+                            .background(Color.Black.copy(alpha = shadowAlpha))
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -189,37 +227,74 @@ private fun HalfCardContent(
     isTop: Boolean,
     cardWidth: Dp,
     cardHeight: Dp,
+    halfHeight: Dp,
+    seamHeight: Dp,
     fontSize: TextUnit,
     shape: RoundedCornerShape,
+    bottomCornerLabel: String? = null,
     modifier: Modifier = Modifier
 ) {
     Box(
         modifier = modifier
+            .width(cardWidth)
+            .height(halfHeight)
             .clip(shape)
-            .background(CharcoalCard)
-            .clipToBounds()
+            .background(CardBackground)
     ) {
-        // Inner Box of full cardHeight aligned so only top or bottom half is visible
         Box(
             modifier = Modifier
+                .layout { measurable, _ ->
+                    val placeable = measurable.measure(
+                        Constraints.fixed(
+                            width = cardWidth.roundToPx(),
+                            height = cardHeight.roundToPx()
+                        )
+                    )
+                    val targetHeight = halfHeight.roundToPx()
+                    val seamPx = seamHeight.roundToPx()
+                    layout(placeable.width, targetHeight) {
+                        val yOffset = if (isTop) 0 else -(targetHeight + seamPx)
+                        placeable.place(0, yOffset)
+                    }
+                }
                 .width(cardWidth)
                 .height(cardHeight)
-                .align(if (isTop) Alignment.TopCenter else Alignment.BottomCenter),
-            contentAlignment = Alignment.Center
         ) {
             Text(
                 text = text,
                 color = PureWhite,
                 fontSize = fontSize,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.Normal,
                 fontFamily = RobotoFont,
                 textAlign = TextAlign.Center,
                 maxLines = 1,
                 softWrap = false,
                 style = TextStyle(
                     platformStyle = PlatformTextStyle(includeFontPadding = false)
-                )
+                ),
+                modifier = Modifier.align(Alignment.Center)
             )
+
+            if (bottomCornerLabel != null) {
+                Text(
+                    text = bottomCornerLabel,
+                    color = CornerLabelColor,
+                    fontSize = with(LocalDensity.current) {
+                        ((cardHeight * 0.08f).toPx() / fontScale).toSp()
+                    },
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = RobotoFont,
+                    style = TextStyle(
+                        platformStyle = PlatformTextStyle(includeFontPadding = false)
+                    ),
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(
+                            start = cardWidth * 0.08f,
+                            bottom = cardHeight * 0.07f
+                        )
+                )
+            }
         }
     }
 }

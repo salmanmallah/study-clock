@@ -41,7 +41,7 @@ enum class ClockMode(
     STOPWATCH(
         title = "Stopwatch",
         iconRes = R.drawable.stopwatch,
-        isLandscape = false
+        isLandscape = true
     ),
     TIMER(
         title = "Timer",
