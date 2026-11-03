@@ -43,13 +43,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ghost.fullscreenclock.theme.CharcoalCard
+import com.ghost.fullscreenclock.theme.DarkGrayText
 import com.ghost.fullscreenclock.theme.PureBlack
 import com.ghost.fullscreenclock.theme.PureWhite
+import com.ghost.fullscreenclock.theme.StopRed
+import com.ghost.fullscreenclock.theme.TomatoAccent
 import com.ghost.fullscreenclock.ui.viewmodel.TimersViewModel
-
-// Tomato accent used on the dark theme (same surfaces/shapes as the Timer screen)
-private val TomatoAccent = Color(0xFFFF5A3C)
-private val MutedText = Color(0xFF8E8E93)
 
 @Composable
 fun PomodoroScreen(
@@ -63,10 +62,11 @@ fun PomodoroScreen(
     val interactionSource = remember { MutableInteractionSource() }
 
     val totalMillis = viewModel.pomodoroTotalMillis.coerceAtLeast(1000L)
+    val totalSec = totalMillis / 1000L
     val progress = (remainingMillis.toFloat() / totalMillis.toFloat()).coerceIn(0f, 1f)
-    val remainingTotalSec = (remainingMillis + 999) / 1000
+    val remainingTotalSec = (remainingMillis + 999L) / 1000L
     val timeFormatted = String.format("%02d:%02d", remainingTotalSec / 60, remainingTotalSec % 60)
-    val isIdle = !isRunning && remainingMillis >= totalMillis
+    val isIdle = !isRunning && (remainingMillis >= totalMillis || remainingTotalSec >= totalSec)
     val status = when {
         isRunning -> "Focus"
         isIdle -> "Ready"
@@ -127,7 +127,7 @@ fun PomodoroScreen(
                     Spacer(Modifier.height(6.dp))
                     Text(
                         text = status.uppercase(),
-                        color = MutedText,
+                        color = DarkGrayText,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
                         letterSpacing = 1.5.sp
@@ -137,6 +137,7 @@ fun PomodoroScreen(
         }
 
         val controls: @Composable () -> Unit = {
+            val sessionWord = if (completedSessions == 1) "session" else "sessions"
             Column(
                 modifier = if (isLandscape) Modifier.width(470.dp) else Modifier,
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -144,7 +145,7 @@ fun PomodoroScreen(
             ) {
                 Text(
                     text = "POMODORO",
-                    color = MutedText,
+                    color = DarkGrayText,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
                     letterSpacing = 1.5.sp
@@ -157,7 +158,7 @@ fun PomodoroScreen(
                         .padding(horizontal = 18.dp, vertical = 9.dp)
                 ) {
                     Text(
-                        text = if (completedSessions > 0) "? $completedSessions sessions done" else "25 min focus session",
+                        text = if (completedSessions > 0) "✓ $completedSessions $sessionWord done" else "25 min focus session",
                         color = PureWhite,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold,
@@ -174,7 +175,7 @@ fun PomodoroScreen(
                     Button(
                         onClick = { viewModel.togglePomodoro() },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (isRunning) Color(0xFFFF3B30) else TomatoAccent
+                            containerColor = if (isRunning) StopRed else TomatoAccent
                         ),
                         shape = RoundedCornerShape(28.dp),
                         modifier = Modifier

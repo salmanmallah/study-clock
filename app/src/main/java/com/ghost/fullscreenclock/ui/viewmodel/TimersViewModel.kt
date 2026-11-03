@@ -2,22 +2,14 @@ package com.ghost.fullscreenclock.ui.viewmodel
 
 import android.app.AlarmManager
 import android.app.Application
-import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import android.os.CombinedVibration
 import android.os.SystemClock
-import android.os.VibrationEffect
-import android.os.Vibrator
-import android.os.VibratorManager
-import androidx.core.app.NotificationCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.ghost.fullscreenclock.BuildConfig
-import com.ghost.fullscreenclock.MainActivity
-import com.ghost.fullscreenclock.R
 import com.ghost.fullscreenclock.receiver.TimerAlertReceiver
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -47,6 +39,7 @@ class TimersViewModel(application: Application) : AndroidViewModel(application) 
         private const val PREF_POMO_DEADLINE = "pref_pomo_deadline"
         private const val PREF_POMO_REMAINING = "pref_pomo_remaining"
         private const val PREF_POMO_RUNNING = "pref_pomo_running"
+        private const val PREF_POMO_SESSIONS = "pref_pomo_sessions"
 
         const val POMODORO_STANDARD_DURATION = 25 * 60 * 1000L
         const val POMODORO_DEBUG_DURATION = 15 * 1000L // 15 seconds for debug testing
@@ -100,7 +93,6 @@ class TimersViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun recordStopwatchLap() {
-        // Priority 1 requirement: Compute accumulated + (elapsedRealtime() - start) at the exact moment of tap
         val currentTotal = if (_stopwatchRunning.value) {
             stopwatchAccumulated + (SystemClock.elapsedRealtime() - stopwatchStartTime)
         } else {
@@ -273,6 +265,7 @@ class TimersViewModel(application: Application) : AndroidViewModel(application) 
 
     fun startPomodoro() {
         if (_pomodoroRunning.value) return
+        TimerAlertReceiver.stopBeepPattern()
         if (_pomodoroRemainingMillis.value <= 0L) {
             _pomodoroRemainingMillis.value = pomodoroTargetDuration
         }
@@ -290,7 +283,7 @@ class TimersViewModel(application: Application) : AndroidViewModel(application) 
                 if (rem <= 0L) {
                     _pomodoroRemainingMillis.value = 0L
                     _pomodoroRunning.value = false
-                    _pomodoroCompletedSessions.value += 1
+                    incrementPomodoroSessions()
                     cancelAlarm(TimerAlertReceiver.TYPE_POMODORO)
                     clearPomoPersistence()
                     triggerInAppAlert(TimerAlertReceiver.TYPE_POMODORO)
@@ -318,6 +311,7 @@ class TimersViewModel(application: Application) : AndroidViewModel(application) 
         pomodoroJob?.cancel()
         pomodoroJob = null
         _pomodoroRunning.value = false
+        TimerAlertReceiver.stopBeepPattern()
         cancelAlarm(TimerAlertReceiver.TYPE_POMODORO)
         clearPomoPersistence()
         _pomodoroRemainingMillis.value = pomodoroTargetDuration
@@ -325,6 +319,13 @@ class TimersViewModel(application: Application) : AndroidViewModel(application) 
 
     fun resetPomodoroSessions() {
         _pomodoroCompletedSessions.value = 0
+        prefs.edit().putInt(PREF_POMO_SESSIONS, 0).apply()
+    }
+
+    private fun incrementPomodoroSessions() {
+        val next = _pomodoroCompletedSessions.value + 1
+        _pomodoroCompletedSessions.value = next
+        prefs.edit().putInt(PREF_POMO_SESSIONS, next).apply()
     }
 
 
@@ -344,13 +345,23 @@ class TimersViewModel(application: Application) : AndroidViewModel(application) 
         )
     }
 
+    private fun canScheduleExactAlarm(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            alarmManager?.canScheduleExactAlarms() == true
+        } else {
+            true
+        }
+    }
+
     private fun scheduleAlarm(type: String, triggerWallMillis: Long) {
         val pi = getPendingIntent(type)
         try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && canScheduleExactAlarm()) {
                 alarmManager?.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerWallMillis, pi)
-            } else {
+            } else if (canScheduleExactAlarm()) {
                 alarmManager?.setExact(AlarmManager.RTC_WAKEUP, triggerWallMillis, pi)
+            } else {
+                alarmManager?.set(AlarmManager.RTC_WAKEUP, triggerWallMillis, pi)
             }
         } catch (_: SecurityException) {
             // Fallback for missing exact alarm permission
@@ -366,61 +377,7 @@ class TimersViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun triggerInAppAlert(type: String) {
-        // In-app alert triggers notification and vibration exactly once
-        val title = if (type == TimerAlertReceiver.TYPE_POMODORO) "Pomodoro Completed" else "Timer Finished"
-        val message = if (type == TimerAlertReceiver.TYPE_POMODORO) {
-            "Focus session complete! Time for a break."
-        } else {
-            "Your countdown timer has reached zero."
-        }
-        val notificationId = if (type == TimerAlertReceiver.TYPE_POMODORO) {
-            TimerAlertReceiver.NOTIFICATION_ID_POMODORO
-        } else {
-            TimerAlertReceiver.NOTIFICATION_ID_TIMER
-        }
-
-        val launchIntent = Intent(appContext, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-        }
-        val pendingIntent = PendingIntent.getActivity(
-            appContext,
-            notificationId,
-            launchIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        val notification = NotificationCompat.Builder(appContext, TimerAlertReceiver.CHANNEL_ID)
-            .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle(title)
-            .setContentText(message)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setAutoCancel(true)
-            .setContentIntent(pendingIntent)
-            .setDefaults(NotificationCompat.DEFAULT_ALL)
-            .build()
-
-        val notificationManager = appContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.notify(notificationId, notification)
-
-        triggerVibration()
-        TimerAlertReceiver.playBeepPattern()
-    }
-
-    private fun triggerVibration() {
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                val vibratorManager = appContext.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager
-                val vibration = CombinedVibration.createParallel(
-                    VibrationEffect.createWaveform(longArrayOf(0, 500, 250, 500, 250, 500), -1)
-                )
-                vibratorManager?.vibrate(vibration)
-            } else {
-                @Suppress("DEPRECATION")
-                val vibrator = appContext.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
-                @Suppress("DEPRECATION")
-                vibrator?.vibrate(longArrayOf(0, 500, 250, 500, 250, 500), -1)
-            }
-        } catch (_: Exception) {}
+        TimerAlertReceiver.dispatchAlert(appContext, type)
     }
 
 
@@ -462,6 +419,9 @@ class TimersViewModel(application: Application) : AndroidViewModel(application) 
     private fun restorePersistedTimers() {
         val nowWall = System.currentTimeMillis()
 
+        // Restore persisted Pomodoro session count
+        _pomodoroCompletedSessions.value = prefs.getInt(PREF_POMO_SESSIONS, 0)
+
         // Restore Timer
         val timerWasRunning = prefs.getBoolean(PREF_TIMER_RUNNING, false)
         val savedTimerDeadline = prefs.getLong(PREF_TIMER_DEADLINE, 0L)
@@ -475,6 +435,7 @@ class TimersViewModel(application: Application) : AndroidViewModel(application) 
             } else {
                 _timerRemainingMillis.value = 0L
                 _timerRunning.value = false
+                clearTimerPersistence()
             }
         } else {
             _timerRemainingMillis.value = savedTimerRemaining
@@ -491,8 +452,10 @@ class TimersViewModel(application: Application) : AndroidViewModel(application) 
                 _pomodoroRemainingMillis.value = rem
                 startPomodoro()
             } else {
-                _pomodoroRemainingMillis.value = 0L
+                _pomodoroRemainingMillis.value = pomodoroTargetDuration
                 _pomodoroRunning.value = false
+                incrementPomodoroSessions()
+                clearPomoPersistence()
             }
         } else {
             _pomodoroRemainingMillis.value = savedPomoRemaining

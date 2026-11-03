@@ -13,12 +13,14 @@ import android.media.AudioTrack
 import android.media.ToneGenerator
 import android.os.Build
 import android.os.CombinedVibration
+import android.os.SystemClock
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import androidx.core.app.NotificationCompat
 import com.ghost.fullscreenclock.MainActivity
 import com.ghost.fullscreenclock.R
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.PI
 import kotlin.math.sin
@@ -33,6 +35,9 @@ class TimerAlertReceiver : BroadcastReceiver() {
         const val TYPE_POMODORO = "POMODORO"
         const val NOTIFICATION_ID_TIMER = 1001
         const val NOTIFICATION_ID_POMODORO = 1002
+
+        private const val DEDUP_WINDOW_MS = 3000L
+        private val lastAlertElapsedByType = ConcurrentHashMap<String, Long>()
 
         private val isBeeping = AtomicBoolean(false)
         @Volatile
@@ -52,6 +57,83 @@ class TimerAlertReceiver : BroadcastReceiver() {
                 val notificationManager =
                     context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
                 notificationManager.createNotificationChannel(channel)
+            }
+        }
+
+        /**
+         * Single coordinated alert dispatcher with a 3-second deduplication guard per timer type.
+         * Prevents duplicate notifications, vibration, and beep bursts if both the foreground
+         * coroutine and AlarmManager broadcast fire at the same deadline.
+         */
+        @Synchronized
+        fun dispatchAlert(context: Context, type: String): Boolean {
+            val nowElapsed = SystemClock.elapsedRealtime()
+            val lastElapsed = lastAlertElapsedByType[type] ?: 0L
+            if (lastElapsed > 0L && (nowElapsed - lastElapsed) in 0 until DEDUP_WINDOW_MS) {
+                return false
+            }
+            lastAlertElapsedByType[type] = nowElapsed
+
+            createNotificationChannel(context)
+
+            val title = if (type == TYPE_POMODORO) "Pomodoro Completed" else "Timer Finished"
+            val message = if (type == TYPE_POMODORO) {
+                "Focus session complete! Time for a break."
+            } else {
+                "Your countdown timer has reached zero."
+            }
+            val notificationId = if (type == TYPE_POMODORO) {
+                NOTIFICATION_ID_POMODORO
+            } else {
+                NOTIFICATION_ID_TIMER
+            }
+
+            val launchIntent = Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            val pendingIntent = PendingIntent.getActivity(
+                context,
+                notificationId,
+                launchIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+
+            val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setContentTitle(title)
+                .setContentText(message)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setAutoCancel(true)
+                .setContentIntent(pendingIntent)
+                .setDefaults(NotificationCompat.DEFAULT_ALL)
+                .build()
+
+            val notificationManager =
+                context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.notify(notificationId, notification)
+
+            triggerVibration(context)
+            playBeepPattern()
+            return true
+        }
+
+        private fun triggerVibration(context: Context) {
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    val vibratorManager =
+                        context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager
+                    val vibration = CombinedVibration.createParallel(
+                        VibrationEffect.createWaveform(longArrayOf(0, 500, 250, 500, 250, 500), -1)
+                    )
+                    vibratorManager?.vibrate(vibration)
+                } else {
+                    @Suppress("DEPRECATION")
+                    val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+                    @Suppress("DEPRECATION")
+                    vibrator?.vibrate(longArrayOf(0, 500, 250, 500, 250, 500), -1)
+                }
+            } catch (_: Exception) {
+                // Ignore if vibration fails
             }
         }
 
@@ -179,61 +261,6 @@ class TimerAlertReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         val type = intent.getStringExtra(EXTRA_ALERT_TYPE) ?: TYPE_TIMER
-        createNotificationChannel(context)
-
-        val title = if (type == TYPE_POMODORO) "Pomodoro Completed" else "Timer Finished"
-        val message = if (type == TYPE_POMODORO) {
-            "Focus session complete! Time for a break."
-        } else {
-            "Your countdown timer has reached zero."
-        }
-        val notificationId = if (type == TYPE_POMODORO) NOTIFICATION_ID_POMODORO else NOTIFICATION_ID_TIMER
-
-        val launchIntent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-        }
-        val pendingIntent = PendingIntent.getActivity(
-            context,
-            notificationId,
-            launchIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle(title)
-            .setContentText(message)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setAutoCancel(true)
-            .setContentIntent(pendingIntent)
-            .setDefaults(NotificationCompat.DEFAULT_ALL)
-            .build()
-
-        val notificationManager =
-            context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.notify(notificationId, notification)
-
-        triggerVibration(context)
-        playBeepPattern()
-    }
-
-    private fun triggerVibration(context: Context) {
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                val vibratorManager =
-                    context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager
-                val vibration = CombinedVibration.createParallel(
-                    VibrationEffect.createWaveform(longArrayOf(0, 500, 250, 500, 250, 500), -1)
-                )
-                vibratorManager?.vibrate(vibration)
-            } else {
-                @Suppress("DEPRECATION")
-                val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
-                @Suppress("DEPRECATION")
-                vibrator?.vibrate(longArrayOf(0, 500, 250, 500, 250, 500), -1)
-            }
-        } catch (_: Exception) {
-            // Ignore if vibration fails
-        }
+        dispatchAlert(context, type)
     }
 }
